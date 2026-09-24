@@ -1,4 +1,7 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
+import { cpSync } from 'node:fs'
+import { join } from 'node:path'
+
 export default defineNuxtConfig({
   modules: [
     '@nuxt/eslint',
@@ -17,6 +20,15 @@ export default defineNuxtConfig({
   },
 
   compatibilityDate: '2026-06-30',
+
+  nitro: {
+    hooks: {
+      // Ship SQL migrations inside .output so server/plugins/migrate.ts can apply them on boot
+      compiled(nitro) {
+        cpSync('server/database/migrations', join(nitro.options.output.serverDir, 'migrations'), { recursive: true })
+      }
+    }
+  },
 
   eslint: {
     config: {
