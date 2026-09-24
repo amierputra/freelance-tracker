@@ -28,3 +28,6 @@ logs
 
 # Design tool cache
 .impeccable
+
+# CI
+.github/workflows/ci.yml
