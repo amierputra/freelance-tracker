@@ -1,0 +1,69 @@
+@import "tailwindcss";
+@import "@nuxt/ui";
+
+@theme static {
+  --font-sans: 'Figtree', sans-serif;
+}
+
+:root {
+  --ui-radius: 0.625rem;
+  /* Deeper shades so white button text and red/green status text pass contrast on white */
+  --ui-primary: var(--ui-color-primary-700);
+  --ui-error: var(--ui-color-error-600);
+  --ui-success: var(--ui-color-success-700);
+  --ui-warning: var(--ui-color-warning-700);
+
+  /* Soft Cards: off-white cards on a mid-grey canvas, pure neutral grey (no blue tint) */
+  --ui-bg: #fafafa;
+  --ui-bg-muted: #f3f3f3;
+  --ui-bg-elevated: #ececec;
+  --ui-bg-accented: #e2e2e2;
+  --app-canvas: #e4e4e3;
+  --app-sidebar: #f6f6f5;
+  --app-card-shadow: 0 1px 2px rgb(0 0 0 / 0.04), 0 8px 24px -12px rgb(0 0 0 / 0.12);
+  --app-card-ring: transparent;
+}
+
+.dark {
+  --ui-primary: var(--ui-color-primary-400);
+  --ui-error: var(--ui-color-error-400);
+  --ui-success: var(--ui-color-success-400);
+  --ui-warning: var(--ui-color-warning-400);
+
+  /* Dark grey, never black; brighter text so it doesn't look washed out */
+  --ui-text: #e8e8e8;
+  --ui-text-toned: #dcdcdc;
+  --ui-text-muted: #a6a6a6;
+  --ui-text-dimmed: #858585;
+  --ui-text-highlighted: #ffffff;
+  --ui-bg: #242424;
+  --ui-bg-muted: #292929;
+  --ui-bg-elevated: #303030;
+  --ui-bg-accented: #3a3a3a;
+  --ui-border: #2c2c2c;
+  --ui-border-muted: #272727;
+  --ui-border-accented: #404040;
+  --app-canvas: #161616;
+  --app-sidebar: #1c1c1c;
+  --app-card-shadow: 0 10px 28px -16px rgb(0 0 0 / 0.7);
+  --app-card-ring: #2e2e2e;
+}
+
+@utility card {
+  background: var(--ui-bg);
+  border-radius: 1.25rem;
+  box-shadow: var(--app-card-shadow), 0 0 0 1px var(--app-card-ring);
+}
+
+body {
+  background: var(--app-canvas);
+}
+
+::selection {
+  background: var(--ui-color-primary-200);
+  color: var(--ui-color-primary-950);
+}
+
+:focus-visible {
+  outline-color: var(--ui-primary);
+}

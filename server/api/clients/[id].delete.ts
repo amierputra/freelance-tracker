@@ -1,0 +1,9 @@
+import { eq } from 'drizzle-orm'
+import { db, schema } from '../../database'
+
+export default defineEventHandler(async (event) => {
+  await requireUserSession(event)
+  const id = Number(getRouterParam(event, 'id'))
+  db.delete(schema.clients).where(eq(schema.clients.id, id)).run()
+  return { success: true }
+})

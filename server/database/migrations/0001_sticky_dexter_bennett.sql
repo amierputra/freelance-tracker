@@ -1,0 +1,1 @@
+ALTER TABLE `settings` ADD `onboarding_dismissed_at` text;

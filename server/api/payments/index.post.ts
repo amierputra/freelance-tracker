@@ -1,0 +1,19 @@
+import { z } from 'zod'
+import { db, schema } from '../../database'
+
+const bodySchema = z.object({
+  projectId: z.number().int(),
+  label: z.string().optional().default('Payment'),
+  amount: z.number(),
+  status: z.enum(['pending', 'sent', 'paid', 'overdue']).optional().default('pending'),
+  dueDate: z.string().nullable().optional(),
+  paidDate: z.string().nullable().optional()
+})
+
+export default defineEventHandler(async (event) => {
+  await requireUserSession(event)
+  const body = await readValidatedBody(event, bodySchema.parse)
+  if (body.status === 'paid' && !body.paidDate) body.paidDate = todayISO()
+  const [payment] = db.insert(schema.payments).values(body).returning().all()
+  return payment
+})
