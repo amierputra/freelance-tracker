@@ -26,11 +26,11 @@ export default defineEventHandler(async (event) => {
   const body = await readValidatedBody(event, bodySchema.parse)
   const passwordHash = await hashPassword(body.password)
 
-  const [user] = db.insert(schema.users).values({
+  const user = db.insert(schema.users).values({
     email: body.email,
     passwordHash,
     name: body.name
-  }).returning().all()
+  }).returning().get()
 
   const existingSettings = db.select().from(schema.settings).all()
   if (existingSettings.length === 0) {

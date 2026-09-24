@@ -32,7 +32,7 @@ export default defineEventHandler(async (event) => {
 
   let settings = db.select().from(schema.settings).get()
   if (!settings) {
-    ;[settings] = db.insert(schema.settings).values({}).returning().all()
+    settings = db.insert(schema.settings).values({}).returning().get()
   }
 
   const subtotal = body.lineItems.reduce((sum, item) => sum + item.amount, 0)
@@ -69,7 +69,7 @@ export default defineEventHandler(async (event) => {
   const pdfPath = `${pdfDir}/${invoiceNumber}.pdf`
   writeFileSync(pdfPath, pdfBytes)
 
-  const [invoice] = db.insert(schema.invoices).values({
+  const invoice = db.insert(schema.invoices).values({
     invoiceNumber,
     clientId: body.clientId,
     projectId: body.projectId,
@@ -82,7 +82,7 @@ export default defineEventHandler(async (event) => {
     lineItems: body.lineItems,
     status: 'draft',
     pdfPath
-  }).returning().all()
+  }).returning().get()
 
   db.update(schema.settings)
     .set({ nextInvoiceNumber: settings.nextInvoiceNumber + 1 })

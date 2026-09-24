@@ -17,6 +17,7 @@
     "better-sqlite3": "^13.0.3",
     "drizzle-orm": "^0.45.3",
     "esbuild": "^0.28.2",
+    "h3": "^1.15.11",
     "nuxt": "^4.5.2",
     "nuxt-auth-utils": "^0.5.30",
     "pdf-lib": "^1.17.1",

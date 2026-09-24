@@ -15,6 +15,6 @@ const bodySchema = z.object({
 export default defineEventHandler(async (event) => {
   await requireUserSession(event)
   const body = await readValidatedBody(event, bodySchema.parse)
-  const [project] = db.insert(schema.projects).values(body).returning().all()
+  const project = db.insert(schema.projects).values(body).returning().get()
   return project
 })

@@ -49,8 +49,8 @@ async function createProject() {
     })
     toast.add({ title: 'Project created', color: 'success' })
     router.push(`/projects/${project.id}`)
-  } catch (e: any) {
-    toast.add({ title: 'Failed to create project', description: e?.data?.statusMessage, color: 'error' })
+  } catch (e) {
+    toast.add({ title: 'Failed to create project', description: (e as { data?: { statusMessage?: string } }).data?.statusMessage, color: 'error' })
   } finally {
     saving.value = false
   }

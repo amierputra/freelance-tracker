@@ -13,6 +13,6 @@ const bodySchema = z.object({
 export default defineEventHandler(async (event) => {
   await requireUserSession(event)
   const body = await readValidatedBody(event, bodySchema.parse)
-  const [client] = db.insert(schema.clients).values(body).returning().all()
+  const client = db.insert(schema.clients).values(body).returning().get()
   return client
 })

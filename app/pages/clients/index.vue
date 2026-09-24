@@ -56,8 +56,8 @@ async function createClient() {
     showModal.value = false
     resetForm()
     await refresh()
-  } catch (e: any) {
-    toast.add({ title: 'Failed to add client', description: e?.data?.statusMessage, color: 'error' })
+  } catch (e) {
+    toast.add({ title: 'Failed to add client', description: (e as { data?: { statusMessage?: string } }).data?.statusMessage, color: 'error' })
   } finally {
     saving.value = false
   }

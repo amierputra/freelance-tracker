@@ -28,8 +28,8 @@ async function handleLogin() {
     })
     await refreshSession()
     await router.push('/')
-  } catch (e: any) {
-    error.value = e?.data?.statusMessage || 'Could not sign in. Check your email and password.'
+  } catch (e) {
+    error.value = (e as { data?: { statusMessage?: string } }).data?.statusMessage || 'Could not sign in. Check your email and password.'
   } finally {
     loading.value = false
   }

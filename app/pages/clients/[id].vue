@@ -40,8 +40,8 @@ async function saveClient() {
     toast.add({ title: 'Client updated', color: 'success' })
     editing.value = false
     await refresh()
-  } catch (e: any) {
-    toast.add({ title: 'Failed to update', description: e?.data?.statusMessage, color: 'error' })
+  } catch (e) {
+    toast.add({ title: 'Failed to update', description: (e as { data?: { statusMessage?: string } }).data?.statusMessage, color: 'error' })
   } finally {
     saving.value = false
   }

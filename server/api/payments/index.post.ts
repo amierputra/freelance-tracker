@@ -14,6 +14,6 @@ export default defineEventHandler(async (event) => {
   await requireUserSession(event)
   const body = await readValidatedBody(event, bodySchema.parse)
   if (body.status === 'paid' && !body.paidDate) body.paidDate = todayISO()
-  const [payment] = db.insert(schema.payments).values(body).returning().all()
+  const payment = db.insert(schema.payments).values(body).returning().get()
   return payment
 })

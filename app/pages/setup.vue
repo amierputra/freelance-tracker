@@ -37,8 +37,8 @@ async function createAccount() {
     await $fetch('/api/auth/setup', { method: 'POST', body: account })
     await refreshSession()
     step.value = 2
-  } catch (e: any) {
-    error.value = e?.data?.statusMessage || 'Setup failed'
+  } catch (e) {
+    error.value = (e as { data?: { statusMessage?: string } }).data?.statusMessage || 'Setup failed'
   } finally {
     loading.value = false
   }

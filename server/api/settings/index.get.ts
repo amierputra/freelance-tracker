@@ -5,7 +5,7 @@ export default defineEventHandler(async (event) => {
 
   let row = db.select().from(schema.settings).get()
   if (!row) {
-    ;[row] = db.insert(schema.settings).values({}).returning().all()
+    row = db.insert(schema.settings).values({}).returning().get()
   }
   return row
 })
