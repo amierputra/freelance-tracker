@@ -4,6 +4,6 @@ import { db, schema } from '../../database'
 export default defineEventHandler(async (event) => {
   await requireUserSession(event)
   const id = Number(getRouterParam(event, 'id'))
-  db.delete(schema.projects).where(eq(schema.projects.id, id)).run()
+  await db.delete(schema.projects).where(eq(schema.projects.id, id))
   return { success: true }
 })

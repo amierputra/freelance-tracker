@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { db, schema } from '../../database'
+import { db, schema, getSettings } from '../../database'
 
 const bodySchema = z.object({
   email: z.string().email(),
@@ -18,7 +18,7 @@ const bodySchema = z.object({
  *   -d '{"email":"you@example.com","password":"a-strong-password","name":"Your Name"}'
  */
 export default defineEventHandler(async (event) => {
-  const existing = db.select().from(schema.users).all()
+  const existing = await db.select().from(schema.users)
   if (existing.length > 0) {
     throw createError({ statusCode: 403, statusMessage: 'Setup already completed. A user already exists.' })
   }
@@ -26,16 +26,14 @@ export default defineEventHandler(async (event) => {
   const body = await readValidatedBody(event, bodySchema.parse)
   const passwordHash = await hashPassword(body.password)
 
-  const user = db.insert(schema.users).values({
+  const [inserted] = await db.insert(schema.users).values({
     email: body.email,
     passwordHash,
     name: body.name
-  }).returning().get()
+  }).$returningId()
+  const user = { id: inserted!.id, email: body.email, name: body.name }
 
-  const existingSettings = db.select().from(schema.settings).all()
-  if (existingSettings.length === 0) {
-    db.insert(schema.settings).values({}).run()
-  }
+  await getSettings()
 
   await setUserSession(event, {
     user: { id: user.id, email: user.email, name: user.name }

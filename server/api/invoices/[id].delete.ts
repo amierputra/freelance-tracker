@@ -6,11 +6,11 @@ export default defineEventHandler(async (event) => {
   await requireUserSession(event)
   const id = Number(getRouterParam(event, 'id'))
 
-  const invoice = db.select().from(schema.invoices).where(eq(schema.invoices.id, id)).get()
+  const [invoice] = await db.select().from(schema.invoices).where(eq(schema.invoices.id, id)).limit(1)
   if (invoice?.pdfPath && existsSync(invoice.pdfPath)) {
     unlinkSync(invoice.pdfPath)
   }
 
-  db.delete(schema.invoices).where(eq(schema.invoices.id, id)).run()
+  await db.delete(schema.invoices).where(eq(schema.invoices.id, id))
   return { success: true }
 })

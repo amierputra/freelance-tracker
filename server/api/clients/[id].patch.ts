@@ -16,11 +16,10 @@ export default defineEventHandler(async (event) => {
   const id = Number(getRouterParam(event, 'id'))
   const body = await readValidatedBody(event, bodySchema.parse)
 
-  const [client] = db.update(schema.clients)
-    .set({ ...body, updatedAt: new Date().toISOString() })
+  await db.update(schema.clients)
+    .set(body)
     .where(eq(schema.clients.id, id))
-    .returning()
-    .all()
+  const [client] = await db.select().from(schema.clients).where(eq(schema.clients.id, id))
 
   if (!client) {
     throw createError({ statusCode: 404, statusMessage: 'Client not found' })

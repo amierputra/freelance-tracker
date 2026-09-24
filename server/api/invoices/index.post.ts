@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { eq } from 'drizzle-orm'
 import { mkdirSync, writeFileSync } from 'node:fs'
-import { db, schema } from '../../database'
+import { db, schema, getSettings } from '../../database'
 import { generateInvoicePdf } from '../../utils/pdf'
 
 const bodySchema = z.object({
@@ -21,19 +21,16 @@ export default defineEventHandler(async (event) => {
   await requireUserSession(event)
   const body = await readValidatedBody(event, bodySchema.parse)
 
-  const client = db.select().from(schema.clients).where(eq(schema.clients.id, body.clientId)).get()
+  const [client] = await db.select().from(schema.clients).where(eq(schema.clients.id, body.clientId)).limit(1)
   if (!client) {
     throw createError({ statusCode: 404, statusMessage: 'Client not found' })
   }
-  const project = db.select().from(schema.projects).where(eq(schema.projects.id, body.projectId)).get()
+  const [project] = await db.select().from(schema.projects).where(eq(schema.projects.id, body.projectId)).limit(1)
   if (!project) {
     throw createError({ statusCode: 404, statusMessage: 'Project not found' })
   }
 
-  let settings = db.select().from(schema.settings).get()
-  if (!settings) {
-    settings = db.insert(schema.settings).values({}).returning().get()
-  }
+  const settings = await getSettings()
 
   const subtotal = body.lineItems.reduce((sum, item) => sum + item.amount, 0)
   const total = subtotal
@@ -69,7 +66,7 @@ export default defineEventHandler(async (event) => {
   const pdfPath = `${pdfDir}/${invoiceNumber}.pdf`
   writeFileSync(pdfPath, pdfBytes)
 
-  const invoice = db.insert(schema.invoices).values({
+  const [inserted] = await db.insert(schema.invoices).values({
     invoiceNumber,
     clientId: body.clientId,
     projectId: body.projectId,
@@ -82,12 +79,12 @@ export default defineEventHandler(async (event) => {
     lineItems: body.lineItems,
     status: 'draft',
     pdfPath
-  }).returning().get()
+  }).$returningId()
 
-  db.update(schema.settings)
+  await db.update(schema.settings)
     .set({ nextInvoiceNumber: settings.nextInvoiceNumber + 1 })
     .where(eq(schema.settings.id, settings.id))
-    .run()
 
-  return invoice
+  const [invoice] = await db.select().from(schema.invoices).where(eq(schema.invoices.id, inserted!.id))
+  return invoice!
 })

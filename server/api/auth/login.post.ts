@@ -10,7 +10,7 @@ const bodySchema = z.object({
 export default defineEventHandler(async (event) => {
   const { email, password } = await readValidatedBody(event, bodySchema.parse)
 
-  const user = db.select().from(schema.users).where(eq(schema.users.email, email)).get()
+  const [user] = await db.select().from(schema.users).where(eq(schema.users.email, email)).limit(1)
   if (!user) {
     throw createError({ statusCode: 401, statusMessage: 'Invalid email or password' })
   }

@@ -6,7 +6,7 @@ export default defineEventHandler(async (event) => {
   await requireUserSession(event)
   const id = Number(getRouterParam(event, 'id'))
 
-  const invoice = db.select().from(schema.invoices).where(eq(schema.invoices.id, id)).get()
+  const [invoice] = await db.select().from(schema.invoices).where(eq(schema.invoices.id, id)).limit(1)
   if (!invoice || !invoice.pdfPath) {
     throw createError({ statusCode: 404, statusMessage: 'Invoice PDF not found' })
   }

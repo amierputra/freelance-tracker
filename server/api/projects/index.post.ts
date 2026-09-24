@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { eq } from 'drizzle-orm'
 import { db, schema } from '../../database'
 
 const bodySchema = z.object({
@@ -15,6 +16,7 @@ const bodySchema = z.object({
 export default defineEventHandler(async (event) => {
   await requireUserSession(event)
   const body = await readValidatedBody(event, bodySchema.parse)
-  const project = db.insert(schema.projects).values(body).returning().get()
-  return project
+  const [inserted] = await db.insert(schema.projects).values(body).$returningId()
+  const [project] = await db.select().from(schema.projects).where(eq(schema.projects.id, inserted!.id))
+  return project!
 })

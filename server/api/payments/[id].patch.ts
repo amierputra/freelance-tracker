@@ -16,11 +16,10 @@ export default defineEventHandler(async (event) => {
   const body = await readValidatedBody(event, bodySchema.parse)
   if (body.status === 'paid' && !body.paidDate) body.paidDate = todayISO()
 
-  const [payment] = db.update(schema.payments)
-    .set({ ...body, updatedAt: new Date().toISOString() })
+  await db.update(schema.payments)
+    .set(body)
     .where(eq(schema.payments.id, id))
-    .returning()
-    .all()
+  const [payment] = await db.select().from(schema.payments).where(eq(schema.payments.id, id))
 
   if (!payment) {
     throw createError({ statusCode: 404, statusMessage: 'Payment not found' })

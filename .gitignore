@@ -23,7 +23,7 @@ logs
 .env.*
 !.env.example
 
-# App data (local SQLite db + generated invoice PDFs)
+# App data (generated invoice PDFs)
 /data
 
 # Design tool cache

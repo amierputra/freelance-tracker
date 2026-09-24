@@ -1,6 +1,5 @@
 import { db, schema } from '../../database'
 
-export default defineEventHandler(() => {
-  const existing = db.select().from(schema.users).all()
-  return { needsSetup: existing.length === 0 }
+export default defineEventHandler(async () => {
+  return { needsSetup: await db.$count(schema.users) === 0 }
 })

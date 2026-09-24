@@ -2,7 +2,7 @@
 
 Personal tool for a solo freelancer to track clients, projects, payments and invoices. Single login, MYR currency, invoices generated as PDF.
 
-Built with Nuxt 4, Nuxt UI v4, Tailwind v4 and SQLite (Drizzle ORM + better-sqlite3).
+Built with Nuxt 4, Nuxt UI v4, Tailwind v4 and MySQL (Drizzle ORM + mysql2).
 
 ## Setup
 
@@ -17,11 +17,14 @@ Set `NUXT_SESSION_PASSWORD` in `.env` to a random string of at least 32 characte
 openssl rand -base64 32
 ```
 
-Create the database (stored at `data/db.sqlite`):
+Create a MySQL database (locally via DBngin) and set `DATABASE_URL` in `.env`:
 
 ```bash
-npx drizzle-kit migrate
+/Users/Shared/DBngin/mysql/8.0.33/bin/mysql -uroot -h127.0.0.1 -e "create database freelance_tracker"
+# DATABASE_URL=mysql://root@127.0.0.1:3306/freelance_tracker
 ```
+
+Tables are created automatically on server start (pending migrations run on boot).
 
 ## Development
 
@@ -40,11 +43,10 @@ npm run typecheck
 
 ## Database changes
 
-Edit `server/database/schema.ts`, then generate and apply a migration:
+Edit `server/database/schema.ts`, then generate a migration. It applies on next server start:
 
 ```bash
 npx drizzle-kit generate
-npx drizzle-kit migrate
 ```
 
 ## Production
@@ -54,4 +56,4 @@ npm run build
 npm run preview
 ```
 
-The server needs a writable `data/` directory for the database. Back it up, it holds all your data.
+Set `DATABASE_URL` (and `NUXT_SESSION_PASSWORD`) as environment variables. On Hostinger, create the database in hPanel and use host `127.0.0.1`. Start the server from the project root so `server/database/migrations` and `data/` resolve. The server needs a writable `data/` directory for invoice PDFs.

@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { eq } from 'drizzle-orm'
 import { db, schema } from '../../database'
 
 const bodySchema = z.object({
@@ -14,6 +15,7 @@ export default defineEventHandler(async (event) => {
   await requireUserSession(event)
   const body = await readValidatedBody(event, bodySchema.parse)
   if (body.status === 'paid' && !body.paidDate) body.paidDate = todayISO()
-  const payment = db.insert(schema.payments).values(body).returning().get()
-  return payment
+  const [inserted] = await db.insert(schema.payments).values(body).$returningId()
+  const [payment] = await db.select().from(schema.payments).where(eq(schema.payments.id, inserted!.id))
+  return payment!
 })

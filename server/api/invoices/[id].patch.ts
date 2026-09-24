@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { eq } from 'drizzle-orm'
 import { writeFileSync } from 'node:fs'
-import { db, schema } from '../../database'
+import { db, schema, getSettings } from '../../database'
 import { generateInvoicePdf } from '../../utils/pdf'
 
 const bodySchema = z.object({
@@ -19,7 +19,7 @@ export default defineEventHandler(async (event) => {
   const id = Number(getRouterParam(event, 'id'))
   const body = await readValidatedBody(event, bodySchema.parse)
 
-  const existing = db.select().from(schema.invoices).where(eq(schema.invoices.id, id)).get()
+  const [existing] = await db.select().from(schema.invoices).where(eq(schema.invoices.id, id)).limit(1)
   if (!existing) {
     throw createError({ statusCode: 404, statusMessage: 'Invoice not found' })
   }
@@ -27,8 +27,8 @@ export default defineEventHandler(async (event) => {
   const update: Partial<typeof schema.invoices.$inferInsert> = { ...body }
 
   if (body.lineItems || body.issueDate || body.dueDate !== undefined) {
-    const client = db.select().from(schema.clients).where(eq(schema.clients.id, existing.clientId)).get()
-    const settings = db.select().from(schema.settings).get()
+    const [client] = await db.select().from(schema.clients).where(eq(schema.clients.id, existing.clientId)).limit(1)
+    const settings = await getSettings()
     if (!client || !settings) {
       throw createError({ statusCode: 404, statusMessage: 'Client or settings not found' })
     }
@@ -75,11 +75,10 @@ export default defineEventHandler(async (event) => {
     update.total = total
   }
 
-  const [invoice] = db.update(schema.invoices)
+  await db.update(schema.invoices)
     .set(update)
     .where(eq(schema.invoices.id, id))
-    .returning()
-    .all()
+  const [invoice] = await db.select().from(schema.invoices).where(eq(schema.invoices.id, id))
 
   return invoice
 })

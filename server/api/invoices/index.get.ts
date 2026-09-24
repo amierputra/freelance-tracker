@@ -4,7 +4,7 @@ import { db, schema } from '../../database'
 export default defineEventHandler(async (event) => {
   await requireUserSession(event)
 
-  const rows = db.select({
+  const rows = await db.select({
     id: schema.invoices.id,
     invoiceNumber: schema.invoices.invoiceNumber,
     issueDate: schema.invoices.issueDate,
@@ -20,7 +20,6 @@ export default defineEventHandler(async (event) => {
     .leftJoin(schema.clients, eq(schema.invoices.clientId, schema.clients.id))
     .leftJoin(schema.projects, eq(schema.invoices.projectId, schema.projects.id))
     .orderBy(desc(schema.invoices.createdAt))
-    .all()
 
   return rows
 })

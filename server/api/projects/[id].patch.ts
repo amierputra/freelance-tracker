@@ -18,11 +18,10 @@ export default defineEventHandler(async (event) => {
   const id = Number(getRouterParam(event, 'id'))
   const body = await readValidatedBody(event, bodySchema.parse)
 
-  const [project] = db.update(schema.projects)
-    .set({ ...body, updatedAt: new Date().toISOString() })
+  await db.update(schema.projects)
+    .set(body)
     .where(eq(schema.projects.id, id))
-    .returning()
-    .all()
+  const [project] = await db.select().from(schema.projects).where(eq(schema.projects.id, id))
 
   if (!project) {
     throw createError({ statusCode: 404, statusMessage: 'Project not found' })

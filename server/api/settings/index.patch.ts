@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { eq } from 'drizzle-orm'
-import { db, schema } from '../../database'
+import { db, schema, getSettings } from '../../database'
 
 const bodySchema = z.object({
   businessName: z.string().optional(),
@@ -18,16 +18,11 @@ export default defineEventHandler(async (event) => {
   await requireUserSession(event)
   const body = await readValidatedBody(event, bodySchema.parse)
 
-  let row = db.select().from(schema.settings).get()
-  if (!row) {
-    row = db.insert(schema.settings).values({}).returning().get()
-  }
+  const row = await getSettings()
 
-  const [updated] = db.update(schema.settings)
-    .set({ ...body, updatedAt: new Date().toISOString() })
+  await db.update(schema.settings)
+    .set(body)
     .where(eq(schema.settings.id, row.id))
-    .returning()
-    .all()
 
-  return updated
+  return getSettings()
 })

@@ -1,91 +1,96 @@
-import { sqliteTable, text, integer, real } from 'drizzle-orm/sqlite-core'
-import { sql } from 'drizzle-orm'
+import { mysqlTable, mysqlEnum, varchar, int, double, timestamp, customType } from 'drizzle-orm/mysql-core'
+
+// JSON stored as text: MariaDB returns JSON columns as strings, so parse here instead of relying on the driver
+const jsonText = <T>() => customType<{ data: T, driverData: string }>({
+  dataType: () => 'text',
+  toDriver: value => JSON.stringify(value),
+  fromDriver: value => (typeof value === 'string' ? JSON.parse(value) : value)
+})
+
+const createdAt = () => timestamp('created_at', { mode: 'string' }).notNull().defaultNow()
+const updatedAt = () => timestamp('updated_at', { mode: 'string' }).notNull().defaultNow().onUpdateNow()
 
 // --- Users (single freelancer login, but table supports more if ever needed) ---
-export const users = sqliteTable('users', {
-  id: integer('id').primaryKey({ autoIncrement: true }),
-  email: text('email').notNull().unique(),
-  passwordHash: text('password_hash').notNull(),
-  name: text('name').notNull(),
-  createdAt: text('created_at').notNull().default(sql`(current_timestamp)`)
+export const users = mysqlTable('users', {
+  id: int('id').primaryKey().autoincrement(),
+  email: varchar('email', { length: 255 }).notNull().unique(),
+  passwordHash: varchar('password_hash', { length: 255 }).notNull(),
+  name: varchar('name', { length: 255 }).notNull(),
+  createdAt: createdAt()
 })
 
 // --- Settings (business info used on invoices; single row app-wide) ---
-export const settings = sqliteTable('settings', {
-  id: integer('id').primaryKey({ autoIncrement: true }),
-  businessName: text('business_name').notNull().default(''),
-  businessEmail: text('business_email').notNull().default(''),
-  businessPhone: text('business_phone').notNull().default(''),
-  businessAddress: text('business_address').notNull().default(''),
-  bankName: text('bank_name').notNull().default(''),
-  bankAccountName: text('bank_account_name').notNull().default(''),
-  bankAccountNumber: text('bank_account_number').notNull().default(''),
-  invoicePrefix: text('invoice_prefix').notNull().default('INV'),
-  nextInvoiceNumber: integer('next_invoice_number').notNull().default(1),
-  invoiceNotes: text('invoice_notes').notNull().default(''),
-  onboardingDismissedAt: text('onboarding_dismissed_at'),
-  updatedAt: text('updated_at').notNull().default(sql`(current_timestamp)`)
+export const settings = mysqlTable('settings', {
+  id: int('id').primaryKey().autoincrement(),
+  businessName: varchar('business_name', { length: 255 }).notNull().default(''),
+  businessEmail: varchar('business_email', { length: 255 }).notNull().default(''),
+  businessPhone: varchar('business_phone', { length: 64 }).notNull().default(''),
+  businessAddress: varchar('business_address', { length: 1000 }).notNull().default(''),
+  bankName: varchar('bank_name', { length: 255 }).notNull().default(''),
+  bankAccountName: varchar('bank_account_name', { length: 255 }).notNull().default(''),
+  bankAccountNumber: varchar('bank_account_number', { length: 64 }).notNull().default(''),
+  invoicePrefix: varchar('invoice_prefix', { length: 32 }).notNull().default('INV'),
+  nextInvoiceNumber: int('next_invoice_number').notNull().default(1),
+  invoiceNotes: varchar('invoice_notes', { length: 2000 }).notNull().default(''),
+  onboardingDismissedAt: varchar('onboarding_dismissed_at', { length: 32 }),
+  updatedAt: updatedAt()
 })
 
 // --- Clients ---
-export const clients = sqliteTable('clients', {
-  id: integer('id').primaryKey({ autoIncrement: true }),
-  name: text('name').notNull(),
-  company: text('company').notNull().default(''),
-  email: text('email').notNull().default(''),
-  phone: text('phone').notNull().default(''),
-  notes: text('notes').notNull().default(''),
-  status: text('status', { enum: ['active', 'inactive'] }).notNull().default('active'),
-  createdAt: text('created_at').notNull().default(sql`(current_timestamp)`),
-  updatedAt: text('updated_at').notNull().default(sql`(current_timestamp)`)
+export const clients = mysqlTable('clients', {
+  id: int('id').primaryKey().autoincrement(),
+  name: varchar('name', { length: 255 }).notNull(),
+  company: varchar('company', { length: 255 }).notNull().default(''),
+  email: varchar('email', { length: 255 }).notNull().default(''),
+  phone: varchar('phone', { length: 64 }).notNull().default(''),
+  notes: varchar('notes', { length: 5000 }).notNull().default(''),
+  status: mysqlEnum('status', ['active', 'inactive']).notNull().default('active'),
+  createdAt: createdAt(),
+  updatedAt: updatedAt()
 })
 
 // --- Projects ---
-export const projects = sqliteTable('projects', {
-  id: integer('id').primaryKey({ autoIncrement: true }),
-  clientId: integer('client_id').notNull().references(() => clients.id, { onDelete: 'cascade' }),
-  title: text('title').notNull(),
-  description: text('description').notNull().default(''),
-  status: text('status', {
-    enum: ['lead', 'in_progress', 'review', 'completed', 'cancelled']
-  }).notNull().default('lead'),
-  pricingType: text('pricing_type', { enum: ['fixed', 'hourly'] }).notNull().default('fixed'),
-  amount: real('amount').notNull().default(0), // fixed total, or hourly rate
-  startDate: text('start_date'),
-  deadline: text('deadline'),
-  createdAt: text('created_at').notNull().default(sql`(current_timestamp)`),
-  updatedAt: text('updated_at').notNull().default(sql`(current_timestamp)`)
+export const projects = mysqlTable('projects', {
+  id: int('id').primaryKey().autoincrement(),
+  clientId: int('client_id').notNull().references(() => clients.id, { onDelete: 'cascade' }),
+  title: varchar('title', { length: 255 }).notNull(),
+  description: varchar('description', { length: 5000 }).notNull().default(''),
+  status: mysqlEnum('status', ['lead', 'in_progress', 'review', 'completed', 'cancelled']).notNull().default('lead'),
+  pricingType: mysqlEnum('pricing_type', ['fixed', 'hourly']).notNull().default('fixed'),
+  amount: double('amount').notNull().default(0), // fixed total, or hourly rate
+  startDate: varchar('start_date', { length: 10 }),
+  deadline: varchar('deadline', { length: 10 }),
+  createdAt: createdAt(),
+  updatedAt: updatedAt()
 })
 
 // --- Payments (one or many per project: deposit, milestone, final, or single lump sum) ---
-export const payments = sqliteTable('payments', {
-  id: integer('id').primaryKey({ autoIncrement: true }),
-  projectId: integer('project_id').notNull().references(() => projects.id, { onDelete: 'cascade' }),
-  label: text('label').notNull().default('Payment'), // e.g. "Deposit", "Final payment", "Full payment"
-  amount: real('amount').notNull(),
-  status: text('status', {
-    enum: ['pending', 'sent', 'paid', 'overdue']
-  }).notNull().default('pending'),
-  dueDate: text('due_date'),
-  paidDate: text('paid_date'),
-  createdAt: text('created_at').notNull().default(sql`(current_timestamp)`),
-  updatedAt: text('updated_at').notNull().default(sql`(current_timestamp)`)
+export const payments = mysqlTable('payments', {
+  id: int('id').primaryKey().autoincrement(),
+  projectId: int('project_id').notNull().references(() => projects.id, { onDelete: 'cascade' }),
+  label: varchar('label', { length: 255 }).notNull().default('Payment'), // e.g. "Deposit", "Final payment", "Full payment"
+  amount: double('amount').notNull(),
+  status: mysqlEnum('status', ['pending', 'sent', 'paid', 'overdue']).notNull().default('pending'),
+  dueDate: varchar('due_date', { length: 10 }),
+  paidDate: varchar('paid_date', { length: 10 }),
+  createdAt: createdAt(),
+  updatedAt: updatedAt()
 })
 
 // --- Invoices (generated PDF tied to one or more payments) ---
-export const invoices = sqliteTable('invoices', {
-  id: integer('id').primaryKey({ autoIncrement: true }),
-  invoiceNumber: text('invoice_number').notNull().unique(),
-  clientId: integer('client_id').notNull().references(() => clients.id, { onDelete: 'cascade' }),
-  projectId: integer('project_id').notNull().references(() => projects.id, { onDelete: 'cascade' }),
-  paymentId: integer('payment_id').references(() => payments.id, { onDelete: 'set null' }),
-  issueDate: text('issue_date').notNull(),
-  dueDate: text('due_date'),
-  subtotal: real('subtotal').notNull().default(0),
-  total: real('total').notNull().default(0),
-  currency: text('currency').notNull().default('MYR'),
-  lineItems: text('line_items', { mode: 'json' }).notNull().$type<{ description: string, amount: number }[]>(),
-  status: text('status', { enum: ['draft', 'sent', 'paid'] }).notNull().default('draft'),
-  pdfPath: text('pdf_path'),
-  createdAt: text('created_at').notNull().default(sql`(current_timestamp)`)
+export const invoices = mysqlTable('invoices', {
+  id: int('id').primaryKey().autoincrement(),
+  invoiceNumber: varchar('invoice_number', { length: 64 }).notNull().unique(),
+  clientId: int('client_id').notNull().references(() => clients.id, { onDelete: 'cascade' }),
+  projectId: int('project_id').notNull().references(() => projects.id, { onDelete: 'cascade' }),
+  paymentId: int('payment_id').references(() => payments.id, { onDelete: 'set null' }),
+  issueDate: varchar('issue_date', { length: 10 }).notNull(),
+  dueDate: varchar('due_date', { length: 10 }),
+  subtotal: double('subtotal').notNull().default(0),
+  total: double('total').notNull().default(0),
+  currency: varchar('currency', { length: 8 }).notNull().default('MYR'),
+  lineItems: jsonText<{ description: string, amount: number }[]>()('line_items').notNull(),
+  status: mysqlEnum('status', ['draft', 'sent', 'paid']).notNull().default('draft'),
+  pdfPath: varchar('pdf_path', { length: 500 }),
+  createdAt: createdAt()
 })
