@@ -22,14 +22,6 @@ const business = reactive({
   businessAddress: ''
 })
 
-onMounted(async () => {
-  const { needsSetup } = await $fetch('/api/auth/setup-status')
-  if (!needsSetup) {
-    toast.add({ title: 'Setup already completed', color: 'warning' })
-    await router.push('/login')
-  }
-})
-
 async function createAccount() {
   loading.value = true
   error.value = ''
@@ -102,7 +94,7 @@ async function finish() {
               Create your account
             </h1>
             <p class="mt-1 text-sm text-muted">
-              This is a personal tool: one login, just for you.
+              Your own private books. Nobody else sees your clients or invoices.
             </p>
           </div>
           <UFormField

@@ -1,6 +1,6 @@
 import { z } from 'zod'
-import { eq } from 'drizzle-orm'
-import { db, schema } from '../../database'
+import { and, eq } from 'drizzle-orm'
+import { db, schema, assertOwned } from '../../database'
 
 const bodySchema = z.object({
   projectId: z.number().int(),
@@ -12,10 +12,11 @@ const bodySchema = z.object({
 })
 
 export default defineEventHandler(async (event) => {
-  await requireUserSession(event)
+  const userId = await requireUserId(event)
   const body = await readValidatedBody(event, bodySchema.parse)
+  await assertOwned(schema.projects, body.projectId, userId)
   if (body.status === 'paid' && !body.paidDate) body.paidDate = todayISO()
-  const [inserted] = await db.insert(schema.payments).values(body).$returningId()
-  const [payment] = await db.select().from(schema.payments).where(eq(schema.payments.id, inserted!.id))
+  const [inserted] = await db.insert(schema.payments).values({ ...body, userId }).$returningId()
+  const [payment] = await db.select().from(schema.payments).where(and(eq(schema.payments.id, inserted!.id), eq(schema.payments.userId, userId)))
   return payment!
 })

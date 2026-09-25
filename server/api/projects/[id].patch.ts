@@ -1,6 +1,6 @@
 import { z } from 'zod'
-import { eq } from 'drizzle-orm'
-import { db, schema } from '../../database'
+import { and, eq } from 'drizzle-orm'
+import { db, schema, assertOwned } from '../../database'
 
 const bodySchema = z.object({
   clientId: z.number().int().optional(),
@@ -14,14 +14,15 @@ const bodySchema = z.object({
 })
 
 export default defineEventHandler(async (event) => {
-  await requireUserSession(event)
+  const userId = await requireUserId(event)
   const id = Number(getRouterParam(event, 'id'))
   const body = await readValidatedBody(event, bodySchema.parse)
+  if (body.clientId !== undefined) await assertOwned(schema.clients, body.clientId, userId)
 
   await db.update(schema.projects)
     .set(body)
-    .where(eq(schema.projects.id, id))
-  const [project] = await db.select().from(schema.projects).where(eq(schema.projects.id, id))
+    .where(and(eq(schema.projects.id, id), eq(schema.projects.userId, userId)))
+  const [project] = await db.select().from(schema.projects).where(and(eq(schema.projects.id, id), eq(schema.projects.userId, userId)))
 
   if (!project) {
     throw createError({ statusCode: 404, statusMessage: 'Project not found' })

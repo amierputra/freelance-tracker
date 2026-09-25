@@ -15,14 +15,14 @@ const bodySchema = z.object({
 })
 
 export default defineEventHandler(async (event) => {
-  await requireUserSession(event)
+  const userId = await requireUserId(event)
   const body = await readValidatedBody(event, bodySchema.parse)
 
-  const row = await getSettings()
+  const row = await getSettings(userId)
 
   await db.update(schema.settings)
     .set(body)
     .where(eq(schema.settings.id, row.id))
 
-  return getSettings()
+  return getSettings(userId)
 })

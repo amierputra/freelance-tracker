@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { eq } from 'drizzle-orm'
+import { and, eq } from 'drizzle-orm'
 import { db, schema } from '../../database'
 
 const bodySchema = z.object({
@@ -12,9 +12,9 @@ const bodySchema = z.object({
 })
 
 export default defineEventHandler(async (event) => {
-  await requireUserSession(event)
+  const userId = await requireUserId(event)
   const body = await readValidatedBody(event, bodySchema.parse)
-  const [inserted] = await db.insert(schema.clients).values(body).$returningId()
-  const [client] = await db.select().from(schema.clients).where(eq(schema.clients.id, inserted!.id))
+  const [inserted] = await db.insert(schema.clients).values({ ...body, userId }).$returningId()
+  const [client] = await db.select().from(schema.clients).where(and(eq(schema.clients.id, inserted!.id), eq(schema.clients.userId, userId)))
   return client!
 })

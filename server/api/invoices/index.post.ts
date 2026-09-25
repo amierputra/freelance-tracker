@@ -1,7 +1,7 @@
 import { z } from 'zod'
-import { eq } from 'drizzle-orm'
+import { and, eq } from 'drizzle-orm'
 import { mkdirSync, writeFileSync } from 'node:fs'
-import { db, schema, getSettings } from '../../database'
+import { db, schema, getSettings, assertOwned } from '../../database'
 import { generateInvoicePdf } from '../../utils/pdf'
 
 const bodySchema = z.object({
@@ -18,19 +18,21 @@ const bodySchema = z.object({
 })
 
 export default defineEventHandler(async (event) => {
-  await requireUserSession(event)
+  const userId = await requireUserId(event)
   const body = await readValidatedBody(event, bodySchema.parse)
 
-  const [client] = await db.select().from(schema.clients).where(eq(schema.clients.id, body.clientId)).limit(1)
+  const [client] = await db.select().from(schema.clients).where(and(eq(schema.clients.id, body.clientId), eq(schema.clients.userId, userId))).limit(1)
   if (!client) {
     throw createError({ statusCode: 404, statusMessage: 'Client not found' })
   }
-  const [project] = await db.select().from(schema.projects).where(eq(schema.projects.id, body.projectId)).limit(1)
+  const [project] = await db.select().from(schema.projects).where(and(eq(schema.projects.id, body.projectId), eq(schema.projects.userId, userId))).limit(1)
   if (!project) {
     throw createError({ statusCode: 404, statusMessage: 'Project not found' })
   }
 
-  const settings = await getSettings()
+  if (body.paymentId !== undefined) await assertOwned(schema.payments, body.paymentId, userId)
+
+  const settings = await getSettings(userId)
 
   const subtotal = body.lineItems.reduce((sum, item) => sum + item.amount, 0)
   const total = subtotal
@@ -61,12 +63,13 @@ export default defineEventHandler(async (event) => {
     notes: body.notes ?? settings.invoiceNotes
   })
 
-  const pdfDir = './data/invoices'
+  const pdfDir = `./data/invoices/${userId}`
   mkdirSync(pdfDir, { recursive: true })
   const pdfPath = `${pdfDir}/${invoiceNumber}.pdf`
   writeFileSync(pdfPath, pdfBytes)
 
   const [inserted] = await db.insert(schema.invoices).values({
+    userId,
     invoiceNumber,
     clientId: body.clientId,
     projectId: body.projectId,
@@ -85,6 +88,6 @@ export default defineEventHandler(async (event) => {
     .set({ nextInvoiceNumber: settings.nextInvoiceNumber + 1 })
     .where(eq(schema.settings.id, settings.id))
 
-  const [invoice] = await db.select().from(schema.invoices).where(eq(schema.invoices.id, inserted!.id))
+  const [invoice] = await db.select().from(schema.invoices).where(and(eq(schema.invoices.id, inserted!.id), eq(schema.invoices.userId, userId)))
   return invoice!
 })

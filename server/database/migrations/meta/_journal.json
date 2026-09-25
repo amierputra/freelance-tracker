@@ -8,6 +8,13 @@
       "when": 1790277955187,
       "tag": "0000_lazy_sage",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1790360868992,
+      "tag": "0001_multi_tenant",
+      "breakpoints": true
     }
   ]
 }
