@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { eq } from 'drizzle-orm'
+import { and, eq } from 'drizzle-orm'
 import { db, schema } from '../../database'
 
 const bodySchema = z.object({
@@ -12,14 +12,14 @@ const bodySchema = z.object({
 })
 
 export default defineEventHandler(async (event) => {
-  await requireUserSession(event)
+  const userId = await requireUserId(event)
   const id = Number(getRouterParam(event, 'id'))
   const body = await readValidatedBody(event, bodySchema.parse)
 
   await db.update(schema.clients)
     .set(body)
-    .where(eq(schema.clients.id, id))
-  const [client] = await db.select().from(schema.clients).where(eq(schema.clients.id, id))
+    .where(and(eq(schema.clients.id, id), eq(schema.clients.userId, userId)))
+  const [client] = await db.select().from(schema.clients).where(and(eq(schema.clients.id, id), eq(schema.clients.userId, userId)))
 
   if (!client) {
     throw createError({ statusCode: 404, statusMessage: 'Client not found' })

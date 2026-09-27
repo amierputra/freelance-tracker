@@ -1,4 +1,4 @@
-import { mysqlTable, mysqlEnum, varchar, int, double, timestamp, customType } from 'drizzle-orm/mysql-core'
+import { mysqlTable, mysqlEnum, varchar, int, double, timestamp, customType, unique } from 'drizzle-orm/mysql-core'
 
 // JSON stored as text: MariaDB returns JSON columns as strings, so parse here instead of relying on the driver
 const jsonText = <T>() => customType<{ data: T, driverData: string }>({
@@ -9,8 +9,10 @@ const jsonText = <T>() => customType<{ data: T, driverData: string }>({
 
 const createdAt = () => timestamp('created_at', { mode: 'string' }).notNull().defaultNow()
 const updatedAt = () => timestamp('updated_at', { mode: 'string' }).notNull().defaultNow().onUpdateNow()
+// Tenant key: every row belongs to one user account; all queries filter on it
+const userId = () => int('user_id').notNull().references(() => users.id, { onDelete: 'cascade' })
 
-// --- Users (single freelancer login, but table supports more if ever needed) ---
+// --- Users (each user is a tenant with their own isolated books) ---
 export const users = mysqlTable('users', {
   id: int('id').primaryKey().autoincrement(),
   email: varchar('email', { length: 255 }).notNull().unique(),
@@ -19,9 +21,10 @@ export const users = mysqlTable('users', {
   createdAt: createdAt()
 })
 
-// --- Settings (business info used on invoices; single row app-wide) ---
+// --- Settings (business info used on invoices; one row per user) ---
 export const settings = mysqlTable('settings', {
   id: int('id').primaryKey().autoincrement(),
+  userId: userId().unique(),
   businessName: varchar('business_name', { length: 255 }).notNull().default(''),
   businessEmail: varchar('business_email', { length: 255 }).notNull().default(''),
   businessPhone: varchar('business_phone', { length: 64 }).notNull().default(''),
@@ -39,6 +42,7 @@ export const settings = mysqlTable('settings', {
 // --- Clients ---
 export const clients = mysqlTable('clients', {
   id: int('id').primaryKey().autoincrement(),
+  userId: userId(),
   name: varchar('name', { length: 255 }).notNull(),
   company: varchar('company', { length: 255 }).notNull().default(''),
   email: varchar('email', { length: 255 }).notNull().default(''),
@@ -52,6 +56,7 @@ export const clients = mysqlTable('clients', {
 // --- Projects ---
 export const projects = mysqlTable('projects', {
   id: int('id').primaryKey().autoincrement(),
+  userId: userId(),
   clientId: int('client_id').notNull().references(() => clients.id, { onDelete: 'cascade' }),
   title: varchar('title', { length: 255 }).notNull(),
   description: varchar('description', { length: 5000 }).notNull().default(''),
@@ -67,6 +72,7 @@ export const projects = mysqlTable('projects', {
 // --- Payments (one or many per project: deposit, milestone, final, or single lump sum) ---
 export const payments = mysqlTable('payments', {
   id: int('id').primaryKey().autoincrement(),
+  userId: userId(),
   projectId: int('project_id').notNull().references(() => projects.id, { onDelete: 'cascade' }),
   label: varchar('label', { length: 255 }).notNull().default('Payment'), // e.g. "Deposit", "Final payment", "Full payment"
   amount: double('amount').notNull(),
@@ -80,7 +86,8 @@ export const payments = mysqlTable('payments', {
 // --- Invoices (generated PDF tied to one or more payments) ---
 export const invoices = mysqlTable('invoices', {
   id: int('id').primaryKey().autoincrement(),
-  invoiceNumber: varchar('invoice_number', { length: 64 }).notNull().unique(),
+  userId: userId(),
+  invoiceNumber: varchar('invoice_number', { length: 64 }).notNull(),
   clientId: int('client_id').notNull().references(() => clients.id, { onDelete: 'cascade' }),
   projectId: int('project_id').notNull().references(() => projects.id, { onDelete: 'cascade' }),
   paymentId: int('payment_id').references(() => payments.id, { onDelete: 'set null' }),
@@ -93,4 +100,4 @@ export const invoices = mysqlTable('invoices', {
   status: mysqlEnum('status', ['draft', 'sent', 'paid']).notNull().default('draft'),
   pdfPath: varchar('pdf_path', { length: 500 }),
   createdAt: createdAt()
-})
+}, t => [unique('invoices_user_number_unique').on(t.userId, t.invoiceNumber)])

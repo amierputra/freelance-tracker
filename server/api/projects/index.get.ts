@@ -2,7 +2,7 @@ import { desc, eq, sql } from 'drizzle-orm'
 import { db, schema } from '../../database'
 
 export default defineEventHandler(async (event) => {
-  await requireUserSession(event)
+  const userId = await requireUserId(event)
 
   const rows = await db.select({
     id: schema.projects.id,
@@ -20,6 +20,7 @@ export default defineEventHandler(async (event) => {
   })
     .from(schema.projects)
     .leftJoin(schema.clients, eq(schema.projects.clientId, schema.clients.id))
+    .where(eq(schema.projects.userId, userId))
     .orderBy(desc(schema.projects.createdAt))
 
   return rows

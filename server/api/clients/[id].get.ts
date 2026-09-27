@@ -1,11 +1,11 @@
-import { eq } from 'drizzle-orm'
+import { and, eq } from 'drizzle-orm'
 import { db, schema } from '../../database'
 
 export default defineEventHandler(async (event) => {
-  await requireUserSession(event)
+  const userId = await requireUserId(event)
   const id = Number(getRouterParam(event, 'id'))
 
-  const [client] = await db.select().from(schema.clients).where(eq(schema.clients.id, id)).limit(1)
+  const [client] = await db.select().from(schema.clients).where(and(eq(schema.clients.id, id), eq(schema.clients.userId, userId))).limit(1)
   if (!client) {
     throw createError({ statusCode: 404, statusMessage: 'Client not found' })
   }

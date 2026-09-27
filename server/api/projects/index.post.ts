@@ -1,6 +1,6 @@
 import { z } from 'zod'
-import { eq } from 'drizzle-orm'
-import { db, schema } from '../../database'
+import { and, eq } from 'drizzle-orm'
+import { db, schema, assertOwned } from '../../database'
 
 const bodySchema = z.object({
   clientId: z.number().int(),
@@ -14,9 +14,10 @@ const bodySchema = z.object({
 })
 
 export default defineEventHandler(async (event) => {
-  await requireUserSession(event)
+  const userId = await requireUserId(event)
   const body = await readValidatedBody(event, bodySchema.parse)
-  const [inserted] = await db.insert(schema.projects).values(body).$returningId()
-  const [project] = await db.select().from(schema.projects).where(eq(schema.projects.id, inserted!.id))
+  await assertOwned(schema.clients, body.clientId, userId)
+  const [inserted] = await db.insert(schema.projects).values({ ...body, userId }).$returningId()
+  const [project] = await db.select().from(schema.projects).where(and(eq(schema.projects.id, inserted!.id), eq(schema.projects.userId, userId)))
   return project!
 })

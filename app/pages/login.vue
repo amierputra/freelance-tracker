@@ -8,11 +8,9 @@ const email = ref('')
 const password = ref('')
 const loading = ref(false)
 const error = ref('')
-const needsSetup = ref(false)
 
 onMounted(async () => {
   const status = await $fetch('/api/auth/setup-status')
-  needsSetup.value = status.needsSetup
   if (status.needsSetup) {
     await router.push('/setup')
   }
@@ -98,14 +96,11 @@ async function handleLogin() {
         </form>
       </div>
 
-      <p
-        v-if="needsSetup"
-        class="mt-6 text-center text-sm text-muted"
-      >
+      <p class="mt-6 text-center text-sm text-muted">
         No account yet? <NuxtLink
           to="/setup"
           class="font-medium text-primary hover:underline"
-        >Run setup</NuxtLink>
+        >Create one</NuxtLink>
       </p>
     </div>
   </div>

@@ -7,7 +7,7 @@
 web
 
 ## Users
-One solo freelancer in Malaysia (the owner) tracking their own client work. Personal tool, single login. Used equally on desktop (at the desk, doing admin: invoices, project setup) and on phone (quick checks: what's overdue, what's due next).
+Solo freelancers in Malaysia, each tracking their own client work. Anyone can sign up; every account has its own isolated clients, projects, payments, invoices and settings. Used equally on desktop (at the desk, doing admin: invoices, project setup) and on phone (quick checks: what's overdue, what's due next).
 
 ## Product Purpose
 Keep a freelancer's money and deadlines under control: who the clients are, which projects are live, which payments are owed or overdue, and which invoices have gone out. Success = nothing slips: no missed deadline, no forgotten unpaid payment, invoices generated in seconds.

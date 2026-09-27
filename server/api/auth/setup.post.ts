@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { eq } from 'drizzle-orm'
 import { db, schema, getSettings } from '../../database'
 
 const bodySchema = z.object({
@@ -7,23 +8,14 @@ const bodySchema = z.object({
   name: z.string().min(1)
 })
 
-/**
- * One-time setup endpoint to create the (single) login user and default
- * settings row. Refuses to run again once a user already exists, so it's
- * safe to leave in place after first use.
- *
- * Usage (once, right after first `npm run dev`):
- * curl -X POST http://localhost:3000/api/auth/setup \
- *   -H "Content-Type: application/json" \
- *   -d '{"email":"you@example.com","password":"a-strong-password","name":"Your Name"}'
- */
+// Sign-up: creates a user (a tenant with its own isolated data) and its settings row
 export default defineEventHandler(async (event) => {
-  const existing = await db.select().from(schema.users)
-  if (existing.length > 0) {
-    throw createError({ statusCode: 403, statusMessage: 'Setup already completed. A user already exists.' })
-  }
-
   const body = await readValidatedBody(event, bodySchema.parse)
+
+  const [existing] = await db.select({ id: schema.users.id }).from(schema.users).where(eq(schema.users.email, body.email)).limit(1)
+  if (existing) {
+    throw createError({ statusCode: 409, statusMessage: 'An account with this email already exists' })
+  }
   const passwordHash = await hashPassword(body.password)
 
   const [inserted] = await db.insert(schema.users).values({
@@ -33,7 +25,7 @@ export default defineEventHandler(async (event) => {
   }).$returningId()
   const user = { id: inserted!.id, email: body.email, name: body.name }
 
-  await getSettings()
+  await getSettings(user.id)
 
   await setUserSession(event, {
     user: { id: user.id, email: user.email, name: user.name }

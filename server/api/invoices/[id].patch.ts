@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { eq } from 'drizzle-orm'
+import { and, eq } from 'drizzle-orm'
 import { writeFileSync } from 'node:fs'
 import { db, schema, getSettings } from '../../database'
 import { generateInvoicePdf } from '../../utils/pdf'
@@ -15,11 +15,11 @@ const bodySchema = z.object({
 })
 
 export default defineEventHandler(async (event) => {
-  await requireUserSession(event)
+  const userId = await requireUserId(event)
   const id = Number(getRouterParam(event, 'id'))
   const body = await readValidatedBody(event, bodySchema.parse)
 
-  const [existing] = await db.select().from(schema.invoices).where(eq(schema.invoices.id, id)).limit(1)
+  const [existing] = await db.select().from(schema.invoices).where(and(eq(schema.invoices.id, id), eq(schema.invoices.userId, userId))).limit(1)
   if (!existing) {
     throw createError({ statusCode: 404, statusMessage: 'Invoice not found' })
   }
@@ -28,7 +28,7 @@ export default defineEventHandler(async (event) => {
 
   if (body.lineItems || body.issueDate || body.dueDate !== undefined) {
     const [client] = await db.select().from(schema.clients).where(eq(schema.clients.id, existing.clientId)).limit(1)
-    const settings = await getSettings()
+    const settings = await getSettings(userId)
     if (!client || !settings) {
       throw createError({ statusCode: 404, statusMessage: 'Client or settings not found' })
     }
@@ -77,8 +77,8 @@ export default defineEventHandler(async (event) => {
 
   await db.update(schema.invoices)
     .set(update)
-    .where(eq(schema.invoices.id, id))
-  const [invoice] = await db.select().from(schema.invoices).where(eq(schema.invoices.id, id))
+    .where(and(eq(schema.invoices.id, id), eq(schema.invoices.userId, userId)))
+  const [invoice] = await db.select().from(schema.invoices).where(and(eq(schema.invoices.id, id), eq(schema.invoices.userId, userId)))
 
   return invoice
 })

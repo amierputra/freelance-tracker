@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { eq } from 'drizzle-orm'
+import { and, eq } from 'drizzle-orm'
 import { db, schema } from '../../database'
 
 const bodySchema = z.object({
@@ -11,15 +11,15 @@ const bodySchema = z.object({
 })
 
 export default defineEventHandler(async (event) => {
-  await requireUserSession(event)
+  const userId = await requireUserId(event)
   const id = Number(getRouterParam(event, 'id'))
   const body = await readValidatedBody(event, bodySchema.parse)
   if (body.status === 'paid' && !body.paidDate) body.paidDate = todayISO()
 
   await db.update(schema.payments)
     .set(body)
-    .where(eq(schema.payments.id, id))
-  const [payment] = await db.select().from(schema.payments).where(eq(schema.payments.id, id))
+    .where(and(eq(schema.payments.id, id), eq(schema.payments.userId, userId)))
+  const [payment] = await db.select().from(schema.payments).where(and(eq(schema.payments.id, id), eq(schema.payments.userId, userId)))
 
   if (!payment) {
     throw createError({ statusCode: 404, statusMessage: 'Payment not found' })

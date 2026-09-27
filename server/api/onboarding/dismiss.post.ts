@@ -5,10 +5,10 @@ import { db, schema, getSettings } from '../../database'
 const bodySchema = z.object({ dismissed: z.boolean().default(true) })
 
 export default defineEventHandler(async (event) => {
-  await requireUserSession(event)
+  const userId = await requireUserId(event)
   const { dismissed } = await readValidatedBody(event, bodySchema.parse)
 
-  const row = await getSettings()
+  const row = await getSettings(userId)
 
   await db.update(schema.settings)
     .set({ onboardingDismissedAt: dismissed ? new Date().toISOString() : null })

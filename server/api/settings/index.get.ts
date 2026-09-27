@@ -1,6 +1,6 @@
 import { getSettings } from '../../database'
 
 export default defineEventHandler(async (event) => {
-  await requireUserSession(event)
-  return getSettings()
+  const userId = await requireUserId(event)
+  return getSettings(userId)
 })

@@ -1,9 +1,10 @@
-import { eq, inArray, sql } from 'drizzle-orm'
+import { and, eq, inArray, sql } from 'drizzle-orm'
 import { db, schema } from '../database'
 
 export default defineEventHandler(async (event) => {
-  await requireUserSession(event)
+  const userId = await requireUserId(event)
 
+  const myPayments = eq(schema.payments.userId, userId)
   const now = new Date()
   const today = isoDate(now)
   const weekEnd = isoDate(new Date(now.getTime() + 7 * 86400000))
@@ -16,7 +17,7 @@ export default defineEventHandler(async (event) => {
     total: sql<number>`coalesce(sum(${schema.payments.amount}), 0)`
   })
     .from(schema.payments)
-    .where(inArray(schema.payments.status, ['pending', 'sent', 'overdue']))
+    .where(and(myPayments, inArray(schema.payments.status, ['pending', 'sent', 'overdue'])))
 
   const activeProjects = await db.select({
     id: schema.projects.id,
@@ -27,7 +28,7 @@ export default defineEventHandler(async (event) => {
   })
     .from(schema.projects)
     .leftJoin(schema.clients, eq(schema.projects.clientId, schema.clients.id))
-    .where(inArray(schema.projects.status, ['lead', 'in_progress', 'review']))
+    .where(and(eq(schema.projects.userId, userId), inArray(schema.projects.status, ['lead', 'in_progress', 'review'])))
     .orderBy(sql`${schema.projects.deadline} is null, ${schema.projects.deadline}`)
 
   const paymentFields = {
@@ -45,7 +46,7 @@ export default defineEventHandler(async (event) => {
     .from(schema.payments)
     .leftJoin(schema.projects, eq(schema.payments.projectId, schema.projects.id))
     .leftJoin(schema.clients, eq(schema.projects.clientId, schema.clients.id))
-    .where(sql`(${schema.payments.status} = 'overdue') or (${schema.payments.status} in ('pending', 'sent') and ${schema.payments.dueDate} is not null and ${schema.payments.dueDate} < ${today})`)
+    .where(and(myPayments, sql`((${schema.payments.status} = 'overdue') or (${schema.payments.status} in ('pending', 'sent') and ${schema.payments.dueDate} is not null and ${schema.payments.dueDate} < ${today}))`))
     .orderBy(schema.payments.dueDate)
 
   // Pending, not overdue, and no invoice generated for it yet
@@ -53,9 +54,9 @@ export default defineEventHandler(async (event) => {
     .from(schema.payments)
     .leftJoin(schema.projects, eq(schema.payments.projectId, schema.projects.id))
     .leftJoin(schema.clients, eq(schema.projects.clientId, schema.clients.id))
-    .where(sql`${schema.payments.status} = 'pending'
+    .where(and(myPayments, sql`${schema.payments.status} = 'pending'
       and (${schema.payments.dueDate} is null or ${schema.payments.dueDate} >= ${today})
-      and not exists (select 1 from ${schema.invoices} where ${schema.invoices.paymentId} = ${schema.payments.id})`)
+      and not exists (select 1 from ${schema.invoices} where ${schema.invoices.paymentId} = ${schema.payments.id})`))
     .orderBy(sql`${schema.payments.dueDate} is null, ${schema.payments.dueDate}`)
     .limit(5)
 
@@ -63,7 +64,7 @@ export default defineEventHandler(async (event) => {
     .from(schema.payments)
     .leftJoin(schema.projects, eq(schema.payments.projectId, schema.projects.id))
     .leftJoin(schema.clients, eq(schema.projects.clientId, schema.clients.id))
-    .where(sql`${schema.payments.status} in ('pending', 'sent') and ${schema.payments.dueDate} between ${today} and ${weekEnd}`)
+    .where(and(myPayments, sql`${schema.payments.status} in ('pending', 'sent') and ${schema.payments.dueDate} between ${today} and ${weekEnd}`))
     .orderBy(schema.payments.dueDate)
 
   const collected = await db.select({
@@ -71,7 +72,7 @@ export default defineEventHandler(async (event) => {
     total: sql<number>`sum(${schema.payments.amount})`
   })
     .from(schema.payments)
-    .where(sql`${schema.payments.status} = 'paid' and ${schema.payments.paidDate} >= ${sixMonthsAgo}`)
+    .where(and(myPayments, sql`${schema.payments.status} = 'paid' and ${schema.payments.paidDate} >= ${sixMonthsAgo}`))
     .groupBy(sql`substr(${schema.payments.paidDate}, 1, 7)`)
 
   return {

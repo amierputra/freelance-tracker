@@ -1,11 +1,11 @@
-import { eq, desc, getTableColumns, sql } from 'drizzle-orm'
+import { and, eq, desc, getTableColumns, sql } from 'drizzle-orm'
 import { db, schema } from '../../database'
 
 export default defineEventHandler(async (event) => {
-  await requireUserSession(event)
+  const userId = await requireUserId(event)
   const id = Number(getRouterParam(event, 'id'))
 
-  const [project] = await db.select().from(schema.projects).where(eq(schema.projects.id, id)).limit(1)
+  const [project] = await db.select().from(schema.projects).where(and(eq(schema.projects.id, id), eq(schema.projects.userId, userId))).limit(1)
   if (!project) {
     throw createError({ statusCode: 404, statusMessage: 'Project not found' })
   }
